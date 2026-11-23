@@ -1,0 +1,5 @@
+node_modules/
+dist/
+dist-test/
+playtest-shots/
+*.mjs

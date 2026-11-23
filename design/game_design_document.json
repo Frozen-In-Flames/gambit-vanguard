@@ -1,0 +1,65 @@
+{
+  "title": "Gambit Vanguard",
+  "hook": "Tactical chess meets arena combat",
+  "game_overview": "Command chess pieces across a tactical board, then dive into intense 1v1 first-person shootouts with piece-specific weapons and upgrade perks.",
+  "artstyle": "low-poly",
+  "genre": "shooting",
+  "winning_condition": "Capture or eliminate the enemy King in an arena duel while preserving your own royal army.",
+  "losing_condition": "Your King falls in battle or your pieces are wiped out by enemy forces.",
+  "player_mode": "single_player",
+  "supported_orientations": [
+    "landscape",
+    "wide"
+  ],
+  "input_methods": [
+    "touch",
+    "mouse",
+    "keyboard"
+  ],
+  "score_options": {
+    "score_type": "points",
+    "score_order": "higher_is_better"
+  },
+  "low_end_device_support": false,
+  "mobile_playable": true,
+  "language": [
+    "en"
+  ],
+  "content_descriptors": [
+    "violence"
+  ],
+  "controls": [
+    {
+      "input": "Left Mouse Click / Tap",
+      "action": "Select chess piece and target square on board; fire weapon in FPS duel."
+    },
+    {
+      "input": "W/A/S/D or Virtual D-Pad",
+      "action": "Move forward, backward, and strafe laterally during FPS combat arena."
+    },
+    {
+      "input": "Mouse Look / Drag Right Screen",
+      "action": "Aim first-person camera and weapon crosshair."
+    },
+    {
+      "input": "Spacebar / Jump Button",
+      "action": "Jump upward to evade incoming enemy fire and projectiles."
+    },
+    {
+      "input": "R Key / Reload Button",
+      "action": "Reload weapon magazine in combat."
+    }
+  ],
+  "sections": [
+    {
+      "title": "Campaign Levels & Progressive Difficulty",
+      "content": "Level 1: The Grand Chamber (Standard skirmish against the Apprentice AI). Level 2: Crimson Bastion (Fortified opponent units with +20% HP and aggressive Knight/Bishop flanking). Level 3: Obsidian Citadel (Grandmaster AI with elite perks, faster projectile speeds, and ruthless King defense).",
+      "summary": "Multi-tier campaign progressing across themed arenas with escalating enemy ranks and tactics."
+    },
+    {
+      "title": "Atmospheric Title Screen & Presentation",
+      "content": "Presents an indie showcase main menu with cinematic 3D board backdrop, pulsing neon title logo, campaign chapter selection, sound toggles, and weapon arsenal codex preview.",
+      "summary": "Polished indie game aesthetic with dynamic 3D background camera sweeps, audio ambience, and campaign level select."
+    }
+  ]
+}
