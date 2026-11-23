@@ -80,6 +80,15 @@ export default function App() {
 
   // Chess and Combat State
   const [pieces, setPieces] = useState<ChessPiece[]>(() => createInitialBoard(startLevel));
+  // Always-current mirror of the board. executeMove must read the
+  // board through this ref, never through the render closure: the AI
+  // turn fires from a timer whose closure predates the player's last
+  // move, and a stale read makes a capture look like a move onto an
+  // empty square (the duel is skipped and the pieces stack).
+  const piecesRef = useRef(pieces);
+  useEffect(() => {
+    piecesRef.current = pieces;
+  }, [pieces]);
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
   const [validMoves, setValidMoves] = useState<ValidMove[]>([]);
   const [isAiThinking, setIsAiThinking] = useState(false);
@@ -264,7 +273,7 @@ export default function App() {
     targetCol: number,
     isAiTurn = false,
   ) => {
-    const targetPiece = getPieceAt(pieces, targetRow, targetCol);
+    const targetPiece = getPieceAt(piecesRef.current, targetRow, targetCol);
 
     if (targetPiece && targetPiece.color !== movingPiece.color) {
       // BATTLE DUEL TRIGGERED!
@@ -331,7 +340,7 @@ export default function App() {
       setValidMoves([]);
       return;
     }
-    const piece = pieces.find((p) => p.id === selectedPieceId);
+    const piece = piecesRef.current.find((p) => p.id === selectedPieceId);
     if (piece) {
       executeMove(piece, row, col, false);
     }
@@ -340,19 +349,20 @@ export default function App() {
   const triggerAiTurn = () => {
     setIsAiThinking(true);
     setTimeout(() => {
-      setPieces((currentPieces) => {
-        const aiDecision = getAiMove(currentPieces);
-        if (aiDecision) {
-          executeMove(
-            aiDecision.piece,
-            aiDecision.target.row,
-            aiDecision.target.col,
-            true,
-          );
-        }
-        setIsAiThinking(false);
-        return currentPieces;
-      });
+      // Read the board from the ref and run the move as a plain side
+      // effect. (This used to run inside a setPieces updater, where
+      // executeMove's own board lookup read a stale closure and AI
+      // captures of the just-moved piece silently skipped the duel.)
+      const aiDecision = getAiMove(piecesRef.current);
+      if (aiDecision) {
+        executeMove(
+          aiDecision.piece,
+          aiDecision.target.row,
+          aiDecision.target.col,
+          true,
+        );
+      }
+      setIsAiThinking(false);
     }, 600);
   };
 
@@ -388,28 +398,10 @@ export default function App() {
       setGameState((prev) => ({...prev, score: prev.score + points}));
     }
 
-    // Check Win/Loss by King death
-    if (losingPiece.type === 'king') {
-      if (losingPiece.color === 'white') {
-        setGameState((prev) => ({...prev, status: 'GAME_OVER'}));
-        setCurrentPhase('BOARD');
-        setDuelContext(null);
-        return;
-      } else {
-        // Enemy King was eliminated!
-        if (gameState.level < TOTAL_LEVELS) {
-          setGameState((prev) => ({...prev, status: 'LEVEL_COMPLETE'}));
-          gameAudio.playVictoryFanfare();
-        } else {
-          setGameState((prev) => ({...prev, status: 'VICTORY'}));
-        }
-        setCurrentPhase('BOARD');
-        setDuelContext(null);
-        return;
-      }
-    }
-
-    // Update board state
+    // Update board state first: the loser dies and a winning
+    // attacker takes the square, on every resolution path including
+    // a king's death (this used to run after the king check, whose
+    // early return left the dead king standing on the board).
     setPieces((prev) => {
       return prev.map((p) => {
         if (p.id === losingPiece.id) {
@@ -432,6 +424,27 @@ export default function App() {
         return p;
       });
     });
+
+    // Check Win/Loss by King death
+    if (losingPiece.type === 'king') {
+      if (losingPiece.color === 'white') {
+        setGameState((prev) => ({...prev, status: 'GAME_OVER'}));
+        setCurrentPhase('BOARD');
+        setDuelContext(null);
+        return;
+      } else {
+        // Enemy King was eliminated!
+        if (gameState.level < TOTAL_LEVELS) {
+          setGameState((prev) => ({...prev, status: 'LEVEL_COMPLETE'}));
+          gameAudio.playVictoryFanfare();
+        } else {
+          setGameState((prev) => ({...prev, status: 'VICTORY'}));
+        }
+        setCurrentPhase('BOARD');
+        setDuelContext(null);
+        return;
+      }
+    }
 
     setCurrentPhase('BOARD');
     setDuelContext(null);
