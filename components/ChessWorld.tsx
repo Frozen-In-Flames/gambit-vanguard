@@ -31,14 +31,61 @@ export function BoardView({
   myColor = 'white',
   flipped = false,
 }: BoardViewProps) {
-  const {camera} = useThree();
+  const {camera, size, gl} = useThree();
 
-  // Smooth isometric camera angle for board
+  // Smooth isometric camera angle for board. The distance adapts to
+  // the viewport aspect: the fixed framing was tuned on landscape
+  // screens, and on a portrait phone the board overflowed the left
+  // and right edges, leaving the outer files half off-screen and
+  // nearly impossible to tap. Pull back along the same view
+  // direction until the full board width fits, with margin.
   useFrame((_, delta) => {
-    const targetPos = new THREE.Vector3(0, 10.5, flipped ? -9.5 : 9.5);
+    const dir = new THREE.Vector3(0, 10.5, flipped ? -9.5 : 9.5);
+    const baseDist = dir.length();
+    let dist = baseDist;
+    const pc = camera as THREE.PerspectiveCamera;
+    if (pc.isPerspectiveCamera) {
+      const aspect = size.width / Math.max(1, size.height);
+      const tanHalfHorizontal =
+        Math.tan(THREE.MathUtils.degToRad(pc.fov / 2)) * aspect;
+      // Board half-width including border is 5.8 units; fit 6.6 so
+      // the far rank (narrower in perspective) also clears the edge.
+      const fitDist = 6.6 / Math.max(0.05, tanHalfHorizontal);
+      dist = Math.min(Math.max(baseDist, fitDist), baseDist * 2.6);
+    }
+    const targetPos = dir.normalize().multiplyScalar(dist);
     camera.position.lerp(targetPos, Math.min(1, delta * 4));
     camera.lookAt(0, 0, 0);
   });
+
+  // Dev-only playtest hook: project a board square to screen pixels
+  // so automated tests can tap pieces exactly where a finger would.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const project = (row: number, col: number) => {
+      const v = new THREE.Vector3(
+        (col - 3.5) * 1.35,
+        0.6,
+        (row - 3.5) * 1.35,
+      ).project(camera);
+      // Page coordinates (the canvas sits below the header), so a
+      // test can tap exactly where a finger would land.
+      const rect = gl.domElement.getBoundingClientRect();
+      return {
+        x: rect.left + (v.x * 0.5 + 0.5) * rect.width,
+        y: rect.top + (-v.y * 0.5 + 0.5) * rect.height,
+        behind: v.z > 1,
+      };
+    };
+    (window as any).__GV_PROJECT__ = project;
+    return () => {
+      // Title backdrop and game board are separate mounts; only
+      // remove the hook if it is still this instance's function.
+      if ((window as any).__GV_PROJECT__ === project) {
+        delete (window as any).__GV_PROJECT__;
+      }
+    };
+  }, [camera, size]);
 
   const selectedPiece = pieces.find((p) => p.id === selectedPieceId);
 
@@ -160,6 +207,18 @@ export function BoardView({
                   onSelectPiece(piece);
                 }
               }}>
+              {/* Generous invisible tap target: the visible piece
+                  meshes are thin, and a fingertip needs close to a
+                  full tile of target. The group's onClick receives
+                  this mesh's taps like any child mesh. Kept low
+                  (1.1 units): a taller proxy on the near rank steals
+                  taps aimed at the rank behind it, because its top
+                  cap crosses those sight lines. Taller pieces keep
+                  their visible mesh as the target above this. */}
+              <mesh position={[0, 0.55, 0]}>
+                <cylinderGeometry args={[0.62, 0.62, 1.1, 10]} />
+                <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+              </mesh>
               <ChessPieceMesh
                 type={piece.type}
                 color={piece.color}
